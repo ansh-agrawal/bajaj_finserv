@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JSON Input Interface</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+    }
+    textarea {
+      width: 100%;
+      height: 150px;
+    }
+    button {
+      margin-top: 10px;
+      padding: 10px 20px;
+    }
+    pre {
+      background-color: #f4f4f4;
+      padding: 10px;
+      border: 1px solid #ddd;
+      overflow-x: auto;
+    }
+    .error {
+      color: red;
+    }
+    #dropdownContainer {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Submit JSON Data</h1>
+  <form id="jsonForm">
+    <label for="jsonInput">JSON Input:</label><br>
+    <textarea id="jsonInput" name="jsonInput" placeholder='e.g., { "data": ["A","C","z"] }' required></textarea><br>
+    <button type="submit">Submit</button>
+  </form>
+  <div id="error" class="error"></div>
+  <div id="dropdownContainer" style="display:none;">
+    <label for="responseOptions">Select Data to Display:</label><br>
+    <select id="responseOptions" multiple>
+      <option value="alphabets">Alphabets</option>
+      <option value="numbers">Numbers</option>
+      <option value="highestAlphabet">Highest Lowercase Alphabet</option>
+    </select><br>
+    <button id="showResponse">Show Response</button>
+  </div>
+
+  <h2>Response:</h2>
+  <pre id="responseOutput"></pre>
+
+  <script>
+    document.getElementById('jsonForm').addEventListener('submit', async function(event) {
+      event.preventDefault(); // Prevent the default form submission
+
+      const jsonInput = document.getElementById('jsonInput').value;
+      const errorDiv = document.getElementById('error');
+      const responseOutput = document.getElementById('responseOutput');
+      const dropdownContainer = document.getElementById('dropdownContainer');
+
+      // Clear previous messages
+      errorDiv.textContent = '';
+      responseOutput.textContent = '';
+
+      let parsedJson;
+      try {
+        parsedJson = JSON.parse(jsonInput);
+      } catch (e) {
+        errorDiv.textContent = 'Invalid JSON input. Please correct it and try again.';
+        return;
+      }
+
+      try {
+        const response = await fetch('/bfhl', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(parsedJson),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Server error: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        window.dataResponse = data; // Store response globally
+
+        // Show the dropdown container and display the response
+        dropdownContainer.style.display = 'block';
+        responseOutput.textContent = JSON.stringify(data, null, 2);
+      } catch (error) {
+        errorDiv.textContent = `Error: ${error.message}`;
+      }
+    });
+
+    document.getElementById('showResponse').addEventListener('click', function() {
+      const selectedOptions = Array.from(document.getElementById('responseOptions').selectedOptions).map(option => option.value);
+      const responseOutput = document.getElementById('responseOutput');
+      const data = window.dataResponse;
+
+      const filteredResponse = {};
+
+      if (selectedOptions.includes('alphabets')) {
+        filteredResponse.alphabets = data.alphabets;
+      }
+      if (selectedOptions.includes('numbers')) {
+        filteredResponse.numbers = data.numbers;
+      }
+      if (selectedOptions.includes('highestAlphabet')) {
+        filteredResponse.highestAlphabet = data.highest_alphabet;
+      }
+
+      responseOutput.textContent = JSON.stringify(filteredResponse, null, 2);
+    });
+  </script>
+</body>
+</html>
